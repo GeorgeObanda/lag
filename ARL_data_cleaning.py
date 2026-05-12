@@ -9,16 +9,77 @@ from redcap import Project
 
 class ArlModel:
     def decrypt_key(self, k1, k2):
-        #fd = "C:/Users/george.obanda/OneDrive - Aga Khan University/AKU/ARL/yek/"
-        base_dir = os.path.dirname(os.path.abspath(__file__))
-        fd = os.path.join(base_dir, "yek")
-        key = open(os.path.join(fd, f"{k1}.key"), "rb").read()
 
-        cipher_suite = Fernet(key)
-        with open("{0}{1}.txt".format(fd, k2), "rb") as f:
-            encrypted_key = f.read()
-        decrypted_key = cipher_suite.decrypt(encrypted_key).decode()
-        return decrypted_key
+        import os
+        from cryptography.fernet import Fernet
+
+        try:
+
+            # ======================================================
+            # Base directory (works locally + Railway/Linux)
+            # ======================================================
+            base_dir = os.path.dirname(os.path.abspath(__file__))
+
+            # ======================================================
+            # YEK folder
+            # ======================================================
+            fd = os.path.join(base_dir, "yek")
+
+            # ======================================================
+            # File paths
+            # ======================================================
+            key_path = os.path.join(fd, f"{k1}.key")
+
+            token_path = os.path.join(fd, f"{k2}.txt")
+
+            # ======================================================
+            # Ensure files exist
+            # ======================================================
+            if not os.path.exists(key_path):
+                raise FileNotFoundError(f"Missing key file: {key_path}")
+
+            if not os.path.exists(token_path):
+                raise FileNotFoundError(f"Missing token file: {token_path}")
+
+            # ======================================================
+            # Read encryption key
+            # ======================================================
+            with open(key_path, "rb") as key_file:
+                key = key_file.read()
+
+            # ======================================================
+            # Create cipher
+            # ======================================================
+            cipher_suite = Fernet(key)
+
+            # ======================================================
+            # Read encrypted token
+            # ======================================================
+            with open(token_path, "rb") as f:
+                encrypted_key = f.read()
+
+            # ======================================================
+            # Decrypt token
+            # ======================================================
+            decrypted_key = cipher_suite.decrypt(encrypted_key).decode()
+
+            return decrypted_key
+
+        except Exception as e:
+
+            import traceback
+
+            error_msg = traceback.format_exc()
+
+            print(error_msg)
+
+            try:
+                import streamlit as st
+                st.error(error_msg)
+            except:
+                pass
+
+            return None
 
     import os
     import pickle

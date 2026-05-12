@@ -2,6 +2,7 @@ import pandas as pd
 import numpy as np
 from cryptography.fernet import Fernet
 import pickle
+import streamlit as st
 from dateutil.relativedelta import relativedelta
 from datetime import date, datetime
 from redcap import Project
@@ -108,60 +109,44 @@ class ArlModel:
         dt = pd.merge(dt, bs[['infant_id', 'bs_facility']], on='infant_id', how='left')
         return dt
 
-    # def get_data(self):
-    #     """Gathers data from redcap server
-    #     """
-    #     try:
-    #         url = 'https://redcap.ea.aku.edu:8088/redcap/redcap_v13.10.0/api/'
-    #         key = self.decrypt_key("kepart2", "adtp_a")
-    #         index = 'infant_id'
-    #         arl = Project(url, key)
-    #         data = arl.export_records(format_type='df', df_kwargs={'index_col': index})
-    #         print("Gathered data successfully")
-    #         data = data.reset_index()
-    #         for col in [c for c in data.columns if '_mid' in c]:
-    #             data[col] = data['infant_id'].str.split('-').str[0]
-    #         return data
-    #     except Exception as e:
-    #         print("Error gathering data returning: {}".format(e))
-    #         return pd.DataFrame([])
     def get_data(self):
-
+        """Gathers data from redcap server
+        """
         try:
-            print("Starting REDCap connection...")
-
             url = 'https://redcap.ea.aku.edu:8088/redcap/redcap_v13.10.0/api/'
-
-            print("Decrypting token...")
             key = self.decrypt_key("kepart2", "adtp_a")
-
-            print("Connecting...")
+            index = 'infant_id'
             arl = Project(url, key)
-
-            print("Downloading records...")
-            data = arl.export_records(
-                format_type='df',
-                df_kwargs={'index_col': 'infant_id'}
-            )
-
-            print("SUCCESS")
-            print(data.shape)
-
+            data = arl.export_records(format_type='df', df_kwargs={'index_col': index})
+            print("Gathered data successfully")
             data = data.reset_index()
-
             for col in [c for c in data.columns if '_mid' in c]:
                 data[col] = data['infant_id'].str.split('-').str[0]
-
             return data
-
         except Exception as e:
-            import traceback
+            print("Error gathering data returning: {}".format(e))
+            return pd.DataFrame([])
 
-            print("FULL ERROR:")
-            print(traceback.format_exc())
-
-            return pd.DataFrame()
-
+    # def get_data(self):
+    #
+    #     try:
+    #         url = st.secrets["REDCAP_API_URL"]
+    #         key = st.secrets["REDCAP_API_KEY"]
+    #
+    #         arl = Project(url, key)
+    #
+    #         data = arl.export_records(
+    #             format_type='df',
+    #             df_kwargs={'index_col': 'infant_id'}
+    #         )
+    #
+    #         data = data.reset_index()
+    #
+    #         return data
+    #
+    #     except Exception as e:
+    #         print(e)
+    #         return pd.DataFrame()
     def const_arl(self, dat):
         """Cosnstructs list values for checkboxes from the Master databases and drops subset
            columnn values (replicated with ___) maintaining primary column name
@@ -1132,8 +1117,8 @@ bs, d1, m1, m2, m3, m4, m5, m6, wd = ac.reconst(df)
 bs, d14, m1, m2, m3,m4, m5, m6, wd= ac.reconst(df)
 d1 = d14.copy()
 #bs - baseline, d1 - Day 14, m1 - Month 1, m2 - Month 2, m3 - Month3, m4 - Month 4, m5 - Month 5, m6 - Month 6, wd - Withdrawal.
-with open("C:/Users/george.obanda/OneDrive - Aga Khan University/AKU/ARL/logs/backup_log.txt", "a") as log:
-#with open("backup_log.txt", "a") as log:
+#with open("C:/Users/george.obanda/OneDrive - Aga Khan University/AKU/ARL/logs/backup_log.txt", "a") as log:
+with open("backup_log.txt", "a") as log:
     ac.backup_encrypt_df(df)
     log.write(f"[{datetime.now()}] Backup started\n")
     log.write("Backup successful\n")

@@ -194,8 +194,7 @@ def load_data():
     return arl.get_data()
 
 df_all = load_data()
-st.write(df_all.head())
-st.write(df_all.columns)
+
 _baseline_raw = df_all[df_all["redcap_event_name"] == "baseline_arm_1"].copy()
 _day14_raw    = df_all[df_all["redcap_event_name"] == "day_14_arm_1"].copy()
 _month1_raw   = df_all[df_all["redcap_event_name"] == "1st_month_arm_1"].copy()

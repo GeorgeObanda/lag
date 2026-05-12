@@ -240,7 +240,13 @@ class ArlModel:
         """Gathers data from REDCap server"""
 
         try:
+            import os
+            import pandas as pd
+            from redcap import Project
+
+            print("====================================")
             print("Starting REDCap connection...")
+            print("====================================")
 
             # ==========================================
             # REDCap credentials from Railway Variables
@@ -248,35 +254,95 @@ class ArlModel:
             url = os.getenv("REDCAP_API_URL")
             token = os.getenv("REDCAP_API_TOKEN")
 
+            print(f"URL FOUND: {url is not None}")
+            print(f"TOKEN FOUND: {token is not None}")
+
             if not url:
                 raise ValueError("REDCAP_API_URL is missing")
 
             if not token:
                 raise ValueError("REDCAP_API_TOKEN is missing")
 
-            print("Connecting to REDCap...")
-
             # ==========================================
             # Connect to REDCap
             # ==========================================
+            print("Connecting to REDCap...")
+
             arl = Project(url, token)
 
-            print("Downloading records...")
+            print("Connected successfully")
 
             # ==========================================
-            # Export records
+            # Download records
             # ==========================================
+            print("Downloading records...")
+
             data = arl.export_records(
                 format_type='df',
                 df_kwargs={'index_col': 'infant_id'}
             )
 
-            print(f"Downloaded data shape: {data.shape}")
+            # ==========================================
+            # DEBUGGING OUTPUT
+            # ==========================================
+            print("====================================")
+            print("DATA DOWNLOADED")
+            print("====================================")
+
+            print(f"TYPE: {type(data)}")
+
+            try:
+                print(f"SHAPE: {data.shape}")
+            except:
+                print("Could not get shape")
+
+            try:
+                print("COLUMNS:")
+                print(list(data.columns))
+            except:
+                print("Could not get columns")
+
+            try:
+                print("FIRST 5 ROWS:")
+                print(data.head())
+            except:
+                print("Could not print head")
+
+            # ==========================================
+            # Check if dataframe is empty
+            # ==========================================
+            if data.empty:
+                print("WARNING: DataFrame is EMPTY")
+                return pd.DataFrame()
 
             # ==========================================
             # Reset index
             # ==========================================
             data = data.reset_index()
+
+            print("AFTER RESET INDEX:")
+            print(data.columns)
+
+            # ==========================================
+            # Ensure redcap_event_name exists
+            # ==========================================
+            if "redcap_event_name" not in data.columns:
+                print("ERROR: redcap_event_name column missing")
+
+                import streamlit as st
+
+                st.error("redcap_event_name column missing")
+
+                st.write("DATAFRAME SHAPE")
+                st.write(data.shape)
+
+                st.write("DATAFRAME COLUMNS")
+                st.write(list(data.columns))
+
+                st.write("FIRST ROWS")
+                st.write(data.head())
+
+                return pd.DataFrame()
 
             # ==========================================
             # Process MID columns
@@ -291,7 +357,9 @@ class ArlModel:
                         .str[0]
                     )
 
+            print("====================================")
             print("Gathered data successfully")
+            print("====================================")
 
             return data
 
@@ -299,8 +367,18 @@ class ArlModel:
 
             import traceback
 
-            print("FULL ERROR:")
-            print(traceback.format_exc())
+            error_msg = traceback.format_exc()
+
+            print("====================================")
+            print("FULL ERROR")
+            print("====================================")
+            print(error_msg)
+
+            try:
+                import streamlit as st
+                st.error(error_msg)
+            except:
+                pass
 
             return pd.DataFrame()
 

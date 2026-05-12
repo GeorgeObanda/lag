@@ -248,9 +248,7 @@ class ArlModel:
             import pandas as pd
             from redcap import Project
 
-            print("====================================")
-            print("Starting REDCap connection...")
-            print("====================================")
+
 
             # ==========================================
             # REDCap credentials from Railway Variables

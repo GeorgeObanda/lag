@@ -9,8 +9,11 @@ from redcap import Project
 
 class ArlModel:
     def decrypt_key(self, k1, k2):
-        fd = "C:/Users/george.obanda/OneDrive - Aga Khan University/AKU/ARL/yek/"
-        key = open(f"{fd}{k1}.key", "rb").read()
+        #fd = "C:/Users/george.obanda/OneDrive - Aga Khan University/AKU/ARL/yek/"
+        base_dir = os.path.dirname(os.path.abspath(__file__))
+        fd = os.path.join(base_dir, "yek")
+        key = open(os.path.join(fd, f"{k1}.key"), "rb").read()
+
         cipher_suite = Fernet(key)
         with open("{0}{1}.txt".format(fd, k2), "rb") as f:
             encrypted_key = f.read()

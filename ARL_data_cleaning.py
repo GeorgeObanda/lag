@@ -34,7 +34,20 @@ class ArlModel:
                 fname.write(encrypt_df)
             fname.close()
         except Exception as e:
-            print(e)
+
+            import traceback
+
+            error_msg = traceback.format_exc()
+
+            print(error_msg)
+
+            try:
+                import streamlit as st
+                st.error(error_msg)
+            except:
+                pass
+
+            return pd.DataFrame()
 
     def compDfs(self, d_1, d_2, ID):
         print(d_1.shape, d_2.shape)

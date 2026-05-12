@@ -237,8 +237,12 @@ class ArlModel:
     from redcap import Project
 
     def get_data(self):
+        import os
         """Gathers data from REDCap server"""
-
+        print("ENV URL:", os.environ.get("REDCAP_API_URL"))
+        print("ENV TOKEN:", os.environ.get("REDCAP_API_TOKEN"))
+        print("ALL ENV KEYS:")
+        print(list(os.environ.keys()))
         try:
             import os
             import pandas as pd

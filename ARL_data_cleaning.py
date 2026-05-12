@@ -109,53 +109,71 @@ class ArlModel:
         dt = pd.merge(dt, bs[['infant_id', 'bs_facility']], on='infant_id', how='left')
         return dt
 
-    # def get_data(self):
-    #     """Gathers data from redcap server
-    #     """
-    #     try:
-    #         url = 'https://redcap.ea.aku.edu:8088/redcap/redcap_v13.10.0/api/'
-    #         key = self.decrypt_key("kepart2", "adtp_a")
-    #         index = 'infant_id'
-    #         arl = Project(url, key)
-    #         data = arl.export_records(format_type='df', df_kwargs={'index_col': index})
-    #         print("Gathered data successfully")
-    #         data = data.reset_index()
-    #         for col in [c for c in data.columns if '_mid' in c]:
-    #             data[col] = data['infant_id'].str.split('-').str[0]
-    #         return data
-    #     except Exception as e:
-    #         print("Error gathering data returning: {}".format(e))
-    #         return pd.DataFrame([])
+    import os
+    import pandas as pd
+    from redcap import Project
+
     def get_data(self):
+        """Gathers data from REDCap server"""
 
         try:
             print("Starting REDCap connection...")
 
-            url = 'https://redcap.ea.aku.edu:8088/redcap/redcap_v13.10.0/api/'
+            # ==========================================
+            # REDCap credentials from Railway Variables
+            # ==========================================
+            url = os.getenv("REDCAP_API_URL")
+            token = os.getenv("REDCAP_API_TOKEN")
 
-            print("Decrypting token...")
-            key = self.decrypt_key("kepart2", "adtp_a")
+            if not url:
+                raise ValueError("REDCAP_API_URL is missing")
 
-            print("Connecting...")
-            arl = Project(url, key)
+            if not token:
+                raise ValueError("REDCAP_API_TOKEN is missing")
+
+            print("Connecting to REDCap...")
+
+            # ==========================================
+            # Connect to REDCap
+            # ==========================================
+            arl = Project(url, token)
 
             print("Downloading records...")
+
+            # ==========================================
+            # Export records
+            # ==========================================
             data = arl.export_records(
                 format_type='df',
                 df_kwargs={'index_col': 'infant_id'}
             )
 
-            print("SUCCESS")
-            print(data.shape)
+            print(f"Downloaded data shape: {data.shape}")
 
+            # ==========================================
+            # Reset index
+            # ==========================================
             data = data.reset_index()
 
+            # ==========================================
+            # Process MID columns
+            # ==========================================
             for col in [c for c in data.columns if '_mid' in c]:
-                data[col] = data['infant_id'].str.split('-').str[0]
+
+                if 'infant_id' in data.columns:
+                    data[col] = (
+                        data['infant_id']
+                        .astype(str)
+                        .str.split('-')
+                        .str[0]
+                    )
+
+            print("Gathered data successfully")
 
             return data
 
         except Exception as e:
+
             import traceback
 
             print("FULL ERROR:")

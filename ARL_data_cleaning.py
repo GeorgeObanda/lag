@@ -1,5 +1,6 @@
 import pandas as pd
 import numpy as np
+import os
 from cryptography.fernet import Fernet
 import pickle
 from dateutil.relativedelta import relativedelta
@@ -1132,8 +1133,9 @@ bs, d1, m1, m2, m3, m4, m5, m6, wd = ac.reconst(df)
 bs, d14, m1, m2, m3,m4, m5, m6, wd= ac.reconst(df)
 d1 = d14.copy()
 #bs - baseline, d1 - Day 14, m1 - Month 1, m2 - Month 2, m3 - Month3, m4 - Month 4, m5 - Month 5, m6 - Month 6, wd - Withdrawal.
-with open("C:/Users/george.obanda/OneDrive - Aga Khan University/AKU/ARL/logs/backup_log.txt", "a") as log:
-#with open("backup_log.txt", "a") as log:
+#with open("C:/Users/george.obanda/OneDrive - Aga Khan University/AKU/ARL/logs/backup_log.txt", "a") as log:
+os.makedirs("logs", exist_ok=True)
+with open("logs/backup_log.txt", "a") as log:
     ac.backup_encrypt_df(df)
     log.write(f"[{datetime.now()}] Backup started\n")
     log.write("Backup successful\n")

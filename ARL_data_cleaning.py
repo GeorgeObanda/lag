@@ -2,6 +2,7 @@ import pandas as pd
 import numpy as np
 from cryptography.fernet import Fernet
 import pickle
+import streamlit as st
 from dateutil.relativedelta import relativedelta
 from datetime import date, datetime
 from redcap import Project
@@ -108,24 +109,44 @@ class ArlModel:
         dt = pd.merge(dt, bs[['infant_id', 'bs_facility']], on='infant_id', how='left')
         return dt
 
-    def get_data(self):
-        """Gathers data from redcap server
-        """
-        try:
-            url = 'https://redcap.ea.aku.edu:8088/redcap/redcap_v13.10.0/api/'
-            key = self.decrypt_key("kepart2", "adtp_a")
-            index = 'infant_id'
-            arl = Project(url, key)
-            data = arl.export_records(format_type='df', df_kwargs={'index_col': index})
-            print("Gathered data successfully")
-            data = data.reset_index()
-            for col in [c for c in data.columns if '_mid' in c]:
-                data[col] = data['infant_id'].str.split('-').str[0]
-            return data
-        except Exception as e:
-            print("Error gathering data returning: {}".format(e))
-            return pd.DataFrame([])
+    # def get_data(self):
+    #     """Gathers data from redcap server
+    #     """
+    #     try:
+    #         url = 'https://redcap.ea.aku.edu:8088/redcap/redcap_v13.10.0/api/'
+    #         key = self.decrypt_key("kepart2", "adtp_a")
+    #         index = 'infant_id'
+    #         arl = Project(url, key)
+    #         data = arl.export_records(format_type='df', df_kwargs={'index_col': index})
+    #         print("Gathered data successfully")
+    #         data = data.reset_index()
+    #         for col in [c for c in data.columns if '_mid' in c]:
+    #             data[col] = data['infant_id'].str.split('-').str[0]
+    #         return data
+    #     except Exception as e:
+    #         print("Error gathering data returning: {}".format(e))
+    #         return pd.DataFrame([])
 
+    def get_data(self):
+
+        try:
+            url = st.secrets["REDCAP_API_URL"]
+            key = st.secrets["REDCAP_API_KEY"]
+
+            arl = Project(url, key)
+
+            data = arl.export_records(
+                format_type='df',
+                df_kwargs={'index_col': 'infant_id'}
+            )
+
+            data = data.reset_index()
+
+            return data
+
+        except Exception as e:
+            print(e)
+            return pd.DataFrame()
     def const_arl(self, dat):
         """Cosnstructs list values for checkboxes from the Master databases and drops subset
            columnn values (replicated with ___) maintaining primary column name

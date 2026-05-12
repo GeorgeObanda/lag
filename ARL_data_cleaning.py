@@ -20,19 +20,65 @@ class ArlModel:
         decrypted_key = cipher_suite.decrypt(encrypted_key).decode()
         return decrypted_key
 
+    import os
+    import pickle
+    import pandas as pd
+    from cryptography.fernet import Fernet
+    from datetime import datetime
+
     def backup_encrypt_df(self, df, file="", key_inn=""):
-        if not file:
-            file = f"C:/Users/george.obanda/OneDrive - Aga Khan University/AKU/ARL/Data/ARL_LBW_Data_Backups/ARL_LBW_data_{datetime.now().strftime('%B-%d-%Y')}"
+
         try:
-            with open("C:/Users/george.obanda/OneDrive - Aga Khan University/AKU/ARL/yek/kepart2.key", "rb") as key_file:
+
+            # ======================================================
+            # Base directory (works locally + Railway/Linux)
+            # ======================================================
+            base_dir = os.path.dirname(os.path.abspath(__file__))
+
+            # ======================================================
+            # Create backup folder if missing
+            # ======================================================
+            backup_dir = os.path.join(base_dir, "Data", "ARL_LBW_Data_Backups")
+
+            os.makedirs(backup_dir, exist_ok=True)
+
+            # ======================================================
+            # Default backup filename
+            # ======================================================
+            if not file:
+                file = os.path.join(
+                    backup_dir,
+                    f"ARL_LBW_data_{datetime.now().strftime('%B-%d-%Y')}.bin"
+                )
+
+            # ======================================================
+            # Key path
+            # ======================================================
+            key_path = os.path.join(base_dir, "yek", "kepart2.key")
+
+            # ======================================================
+            # Read encryption key
+            # ======================================================
+            with open(key_path, "rb") as key_file:
                 key_inn = key_file.read()
+
+            # ======================================================
+            # Encrypt dataframe
+            # ======================================================
             cipher = Fernet(key_inn)
+
             df_serialized = pickle.dumps(df)
+
             encrypt_df = cipher.encrypt(df_serialized)
 
-            with open(f"{file}", 'wb') as fname:
+            # ======================================================
+            # Save encrypted backup
+            # ======================================================
+            with open(file, 'wb') as fname:
                 fname.write(encrypt_df)
-            fname.close()
+
+            print(f"Backup saved successfully: {file}")
+
         except Exception as e:
 
             import traceback

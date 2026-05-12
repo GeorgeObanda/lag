@@ -1254,8 +1254,8 @@ df = ac.get_data() # API data import from REDCap, requires an export API.
 ds_backup = df.copy() # Disabled for now, usage for daily backup
 ds=ac.const_arl(df)
 #|-------------------------------------------------------------------------------|
-file = f"C:/Users/george.obanda/OneDrive - Aga Khan University/AKU/ARL/Data/Participant_Followup_Data/Participant_Followup_Data"
-file2 = f"C:/Users/george.obanda/OneDrive - Aga Khan University/AKU/ARL/Data/ARLData/ARLData_{datetime.now().strftime('%B-%d-%Y')}"
+#file = f"C:/Users/george.obanda/OneDrive - Aga Khan University/AKU/ARL/Data/Participant_Followup_Data/Participant_Followup_Data"
+#file2 = f"C:/Users/george.obanda/OneDrive - Aga Khan University/AKU/ARL/Data/ARLData/ARLData_{datetime.now().strftime('%B-%d-%Y')}"
 #plst = ds[['redcap_event_name','infant_id','bs_mid','cg_initials','cg_infant_rship','cg_contact','cg_contact_alt','cd_lat','cd_long','cg_infant_rship_other']].copy()
 # plst = plst[plst.redcap_event_name=="baseline_arm_1"].copy()
 # plst.cg_contact = plst.cg_contact.fillna(0)
@@ -1268,7 +1268,7 @@ file2 = f"C:/Users/george.obanda/OneDrive - Aga Khan University/AKU/ARL/Data/ARL
 # plst = plst.drop_duplicates()
 # plst.reset_index(drop=True, inplace=True)
 #ac.backup_encrypt_df(plst.fillna(''), file) # saves participant information in encrypted formart. Currently disabled, we will generate an encryption_key
-ac.backup_encrypt_df(ds_backup.fillna(''), file2) # Data backup everytime this project runs. Currently disabled, we will generate an encryption_key
+#ac.backup_encrypt_df(ds_backup.fillna(''), file2) # Data backup everytime this project runs. Currently disabled, we will generate an encryption_key
 bs, d1, m1, m2, m3, m4, m5, m6, wd = ac.reconst(df)
 #|-------------------------------------------------------------------------------|
 bs, d14, m1, m2, m3,m4, m5, m6, wd= ac.reconst(df)

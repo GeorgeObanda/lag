@@ -623,42 +623,35 @@ if "enrollment_date" in baseline.columns:
 # ---------------------------------------------------------------------------
 section_header("Follow-up Attendance", color=PURPLE, icon="🔄")
 
-_visit_labels = [r["Visit"] for _, r in follow_df_2025.iterrows()]
+# Only include visits that are complete for the Intervention arm (not ongoing)
+_completed_rows_2026 = follow_df_2026[~follow_df_2026["Ongoing"]].reset_index(drop=True)
+_completed_visits    = list(_completed_rows_2026["Visit"])
+_completed_rows_2025 = follow_df_2025[follow_df_2025["Visit"].isin(_completed_visits)].reset_index(drop=True)
 
-# Compute attended values; for Intervention pending visits show 0 bar height
-_intv_attended = []
-_intv_att_text = []
-for _, row in follow_df_2026.iterrows():
-    if row["Ongoing"]:
-        _intv_attended.append(0)
-        _intv_att_text.append("⏳ Pending")
-    else:
-        _intv_attended.append(row["Completed"])
-        _intv_att_text.append(str(row["Completed"]))
+_pending_visits = list(follow_df_2026[follow_df_2026["Ongoing"]]["Visit"])
 
 col_att, col_miss = st.columns(2)
 
-# ── Chart 1: Attended visits — Control vs Intervention ──
+# ── Chart 1: Attended visits — Control vs Intervention (completed only) ──
 with col_att:
     fig_att = go.Figure()
     fig_att.add_trace(go.Bar(
-        x=_visit_labels,
-        y=follow_df_2025["Completed"],
+        x=_completed_visits,
+        y=_completed_rows_2025["Completed"],
         name="Control (2025)",
         marker_color=CHART_BLUE,
-        text=follow_df_2025["Completed"],
+        text=_completed_rows_2025["Completed"],
         textposition="outside",
         hovertemplate="%{x} · Control: <b>%{y}</b> attended<extra></extra>",
     ))
     fig_att.add_trace(go.Bar(
-        x=_visit_labels,
-        y=_intv_attended,
+        x=_completed_visits,
+        y=_completed_rows_2026["Completed"],
         name="Intervention (2026)",
         marker_color=CHART_TEAL,
-        text=_intv_att_text,
+        text=_completed_rows_2026["Completed"],
         textposition="outside",
-        hovertemplate="%{x} · Intervention: <b>%{customdata}</b><extra></extra>",
-        customdata=_intv_att_text,
+        hovertemplate="%{x} · Intervention: <b>%{y}</b> attended<extra></extra>",
     ))
     fig_att.update_layout(barmode="group", uniformtext_minsize=9, uniformtext_mode="hide")
     st.plotly_chart(
@@ -666,25 +659,15 @@ with col_att:
         use_container_width=True,
     )
 
-# ── Chart 2: Missed visits — Control vs Intervention ──
+# ── Chart 2: Missed visits — Control vs Intervention (completed only) ──
 with col_miss:
-    # For Intervention: pending visits get 0 bar + "Pending" label; completed get missed count
-    _intv_missed = []
-    _intv_miss_text = []
-    for _, row in follow_df_2026.iterrows():
-        if row["Ongoing"]:
-            _intv_missed.append(0)
-            _intv_miss_text.append("⏳ Pending")
-        else:
-            _intv_missed.append(row["Missed"])
-            _intv_miss_text.append(str(row["Missed"]) if row["Missed"] > 0 else "0")
-
-    _ctrl_miss_text = [str(v) if v > 0 else "0" for v in follow_df_2025["Missed"]]
+    _ctrl_miss_text = [str(v) if v > 0 else "0" for v in _completed_rows_2025["Missed"]]
+    _intv_miss_text = [str(v) if v > 0 else "0" for v in _completed_rows_2026["Missed"]]
 
     fig_miss = go.Figure()
     fig_miss.add_trace(go.Bar(
-        x=_visit_labels,
-        y=follow_df_2025["Missed"],
+        x=_completed_visits,
+        y=_completed_rows_2025["Missed"],
         name="Control — Missed (2025)",
         marker_color=CHART_RED,
         text=_ctrl_miss_text,
@@ -692,14 +675,13 @@ with col_miss:
         hovertemplate="%{x} · Control: <b>%{y}</b> missed<extra></extra>",
     ))
     fig_miss.add_trace(go.Bar(
-        x=_visit_labels,
-        y=_intv_missed,
+        x=_completed_visits,
+        y=_completed_rows_2026["Missed"],
         name="Intervention — Missed (2026)",
         marker_color=CHART_ORANGE,
         text=_intv_miss_text,
         textposition="outside",
-        hovertemplate="%{x} · Intervention: <b>%{customdata}</b><extra></extra>",
-        customdata=_intv_miss_text,
+        hovertemplate="%{x} · Intervention: <b>%{y}</b> missed<extra></extra>",
     ))
     fig_miss.update_layout(barmode="group", uniformtext_minsize=9, uniformtext_mode="hide")
     st.plotly_chart(
@@ -707,9 +689,13 @@ with col_miss:
         use_container_width=True,
     )
 
+_pending_note = (
+    f" Visits still in progress for Intervention (2026) — not yet shown: <strong>{', '.join(_pending_visits)}</strong>."
+    if _pending_visits else ""
+)
 insight_box(
-    "&#x1F535; <strong>Control (2025)</strong> — all visits complete &nbsp;|&nbsp; "
-    "&#x1F7E2; <strong>Intervention (2026)</strong> — ⏳ Pending means data collection is still ongoing for that visit",
+    f"&#x1F535; <strong>Control (2025)</strong> &nbsp;|&nbsp; "
+    f"&#x1F7E2; <strong>Intervention (2026)</strong> — showing completed visits only.{_pending_note}",
     color=PURPLE,
 )
 

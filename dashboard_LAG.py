@@ -412,6 +412,27 @@ _arm_kwargs = dict(
 follow_df_2025, n_2025 = build_arm_follow_df("2025", ongoing_visits_set=set(), **_arm_kwargs)
 follow_df_2026, n_2026 = build_arm_follow_df("2026", ongoing_visits_set=ONGOING_VISITS_2026, **_arm_kwargs)
 
+# ── Per-arm active / withdrawn counts (for side-by-side donuts) ──
+if _enrol_col_exists:
+    _d2025 = pd.to_datetime(_baseline_raw["enrollment_date"], errors="coerce")
+    _b2025_ids = safe_ids(_baseline_raw[_d2025.dt.year == 2025])
+    _d2026 = pd.to_datetime(_baseline_raw["enrollment_date"], errors="coerce")
+    _b2026_ids = safe_ids(_baseline_raw[_d2026.dt.year == 2026])
+else:
+    _b2025_ids = safe_ids(_baseline_raw)
+    _b2026_ids = set()
+
+_w2025_ids = safe_ids(filter_df_by_ids(_withd_raw, _b2025_ids))
+_w2026_ids = safe_ids(filter_df_by_ids(_withd_raw, _b2026_ids))
+_a2025 = len(_b2025_ids) - len(_w2025_ids)
+_a2026 = len(_b2026_ids) - len(_w2026_ids)
+_r2025 = len(_b2025_ids)
+_r2026 = len(_b2026_ids)
+_wpct2025 = (len(_w2025_ids) / _r2025 * 100) if _r2025 > 0 else 0
+_wpct2026 = (len(_w2026_ids) / _r2026 * 100) if _r2026 > 0 else 0
+_apct2025 = (_a2025 / _r2025 * 100) if _r2025 > 0 else 0
+_apct2026 = (_a2026 / _r2026 * 100) if _r2026 > 0 else 0
+
 # Worst missed visit (completed timepoints only)
 complete_only = follow_df[~follow_df["Ongoing"]]
 if not complete_only.empty and complete_only["Missed"].max() > 0:
@@ -524,137 +545,171 @@ with col3:
 st.markdown("<div style='height:14px'></div>", unsafe_allow_html=True)
 
 # ---------------------------------------------------------------------------
-# Row: Recruitment Timeline (left) | Active vs Withdrawn donut (right)
+# Row: Control donut (left) | Intervention donut (right) — always side by side
 # ---------------------------------------------------------------------------
-col_timeline, col_donut = st.columns(2)
+col_d2025, col_d2026 = st.columns(2)
 
-with col_donut:
-    _withd_pct = (withdrawals_count / n_recruited * 100) if n_recruited > 0 else 0
-    fig_donut = go.Figure(go.Pie(
+def make_donut(active, withdrawn, recruited, arm_name, color_active, color_wd):
+    apct = (active / recruited * 100) if recruited > 0 else 0
+    wpct = (withdrawn / recruited * 100) if recruited > 0 else 0
+    fig = go.Figure(go.Pie(
         labels=["Active", "Withdrawn"],
-        values=[retention, withdrawals_count],
+        values=[active, withdrawn],
         hole=0.58,
-        marker=dict(colors=[CHART_BLUE, CHART_RED]),
-        text=[f"{retention} ({retention_pct:.1f}%)", f"{withdrawals_count} ({_withd_pct:.1f}%)"],
+        marker=dict(colors=[color_active, color_wd]),
+        text=[f"{active} ({apct:.1f}%)", f"{withdrawn} ({wpct:.1f}%)"],
         textinfo="text",
         textfont=dict(size=13),
         hovertemplate="%{label}: <b>%{value}</b> (%{percent})<extra></extra>",
     ))
-    fig_donut.update_layout(
+    fig.update_layout(
         annotations=[dict(
-            text=f"<b>{retention}</b><br><span style='font-size:10px'>{retention_pct:.0f}% Active</span>",
+            text=f"<b>{active}</b><br><span style='font-size:10px'>{apct:.0f}% Active</span>",
             x=0.5, y=0.5, font_size=18, showarrow=False)],
         legend=dict(orientation="h", x=0.5, xanchor="center", y=-0.05),
     )
+    return fig
+
+with col_d2025:
     st.plotly_chart(
-        style_chart(fig_donut, f"Active vs Withdrawn — {year_label}", height=380),
+        style_chart(
+            make_donut(_a2025, len(_w2025_ids), _r2025, "Control", CHART_BLUE, CHART_RED),
+            "Active vs Withdrawn — Control (2025)", height=360,
+        ),
         use_container_width=True,
     )
 
-with col_timeline:
-    if "enrollment_date" in baseline.columns:
-        df_dates = baseline.copy()
-        df_dates["enrollment_date"] = pd.to_datetime(df_dates["enrollment_date"], errors="coerce").dt.normalize()
-        df_dates = df_dates.dropna(subset=["enrollment_date"])
-        weekly = (
-            df_dates.groupby(pd.Grouper(key="enrollment_date", freq="W"))["infant_id"]
-            .nunique().reset_index().rename(columns={"infant_id": "weekly_recruits"})
-        )
-        weekly["cumulative"] = weekly["weekly_recruits"].cumsum()
+with col_d2026:
+    st.plotly_chart(
+        style_chart(
+            make_donut(_a2026, len(_w2026_ids), _r2026, "Intervention", CHART_TEAL, CHART_ORANGE),
+            "Active vs Withdrawn — Intervention (2026)", height=360,
+        ),
+        use_container_width=True,
+    )
 
-        fig_recruit = go.Figure()
-        fig_recruit.add_trace(go.Scatter(
-            x=weekly["enrollment_date"], y=weekly["cumulative"],
-            mode="lines+markers", line=dict(color=CHART_BLUE, width=3),
-            fill="tozeroy", fillcolor="rgba(46,110,219,0.08)",
-            marker=dict(size=7, color=CHART_BLUE),
-            hovertemplate="Week of %{x|%b %d, %Y}<br>Cumulative: <b>%{y}</b><extra></extra>",
-        ))
-        st.plotly_chart(
-            style_chart(fig_recruit, f"Cumulative Recruitment by Week — {year_label}", height=380),
-            use_container_width=True,
-        )
-    else:
-        st.info("Enrollment date data not available for the recruitment timeline.")
-
-insight_box("Most participants remain active in the study. Withdrawals are a small fraction of total recruitment. Recruitment grew steadily over the study period.", color=BLUE)
+insight_box("Most participants remain active in the study. Withdrawals are a small fraction of total recruitment.", color=BLUE)
 
 # ---------------------------------------------------------------------------
-# Section 3 – Follow-up Attendance (combined Control vs Intervention comparison)
+# Row: Recruitment Timeline (full width)
+# ---------------------------------------------------------------------------
+if "enrollment_date" in baseline.columns:
+    section_header("Recruitment Over Time", color=GREEN, icon="📅")
+    df_dates = baseline.copy()
+    df_dates["enrollment_date"] = pd.to_datetime(df_dates["enrollment_date"], errors="coerce").dt.normalize()
+    df_dates = df_dates.dropna(subset=["enrollment_date"])
+    weekly = (
+        df_dates.groupby(pd.Grouper(key="enrollment_date", freq="W"))["infant_id"]
+        .nunique().reset_index().rename(columns={"infant_id": "weekly_recruits"})
+    )
+    weekly["cumulative"] = weekly["weekly_recruits"].cumsum()
+
+    fig_recruit = go.Figure()
+    fig_recruit.add_trace(go.Scatter(
+        x=weekly["enrollment_date"], y=weekly["cumulative"],
+        mode="lines+markers", line=dict(color=CHART_BLUE, width=3),
+        fill="tozeroy", fillcolor="rgba(46,110,219,0.08)",
+        marker=dict(size=7, color=CHART_BLUE),
+        hovertemplate="Week of %{x|%b %d, %Y}<br>Cumulative: <b>%{y}</b><extra></extra>",
+    ))
+    st.plotly_chart(
+        style_chart(fig_recruit, f"Cumulative Recruitment by Week — {year_label}", height=360),
+        use_container_width=True,
+    )
+    insight_box("Recruitment grew steadily over the study period.", color=GREEN)
+
+# ---------------------------------------------------------------------------
+# Section 3 – Follow-up Attendance — two side-by-side charts
 # ---------------------------------------------------------------------------
 section_header("Follow-up Attendance", color=PURPLE, icon="🔄")
 
 _visit_labels = [r["Visit"] for _, r in follow_df_2025.iterrows()]
 
-fig_combined = go.Figure()
+# Compute attended values; for Intervention pending visits show 0 bar height
+_intv_attended = []
+_intv_att_text = []
+for _, row in follow_df_2026.iterrows():
+    if row["Ongoing"]:
+        _intv_attended.append(0)
+        _intv_att_text.append("⏳ Pending")
+    else:
+        _intv_attended.append(row["Completed"])
+        _intv_att_text.append(str(row["Completed"]))
 
-# Control arm (2025) — Attended
-fig_combined.add_trace(go.Bar(
-    x=_visit_labels,
-    y=follow_df_2025["Completed"],
-    name="Control — Attended (2025)",
-    marker_color=CHART_BLUE,
-    text=follow_df_2025["Completed"],
-    textposition="outside",
-    hovertemplate="%{x} · Control: <b>%{y}</b> attended<extra></extra>",
-))
+col_att, col_miss = st.columns(2)
 
-# Control arm (2025) — Missed
-fig_combined.add_trace(go.Bar(
-    x=_visit_labels,
-    y=follow_df_2025["Missed"],
-    name="Control — Missed (2025)",
-    marker_color="#9bb8f0",
-    text=[str(v) if v > 0 else "" for v in follow_df_2025["Missed"]],
-    textposition="outside",
-    hovertemplate="%{x} · Control: <b>%{y}</b> missed<extra></extra>",
-))
+# ── Chart 1: Attended visits — Control vs Intervention ──
+with col_att:
+    fig_att = go.Figure()
+    fig_att.add_trace(go.Bar(
+        x=_visit_labels,
+        y=follow_df_2025["Completed"],
+        name="Control (2025)",
+        marker_color=CHART_BLUE,
+        text=follow_df_2025["Completed"],
+        textposition="outside",
+        hovertemplate="%{x} · Control: <b>%{y}</b> attended<extra></extra>",
+    ))
+    fig_att.add_trace(go.Bar(
+        x=_visit_labels,
+        y=_intv_attended,
+        name="Intervention (2026)",
+        marker_color=CHART_TEAL,
+        text=_intv_att_text,
+        textposition="outside",
+        hovertemplate="%{x} · Intervention: <b>%{customdata}</b><extra></extra>",
+        customdata=_intv_att_text,
+    ))
+    fig_att.update_layout(barmode="group", uniformtext_minsize=9, uniformtext_mode="hide")
+    st.plotly_chart(
+        style_chart(fig_att, "Attended Follow-up Visits: Control vs Intervention", height=420),
+        use_container_width=True,
+    )
 
-# Intervention arm (2026) — Attended
-fig_combined.add_trace(go.Bar(
-    x=_visit_labels,
-    y=follow_df_2026["Completed"],
-    name="Intervention — Attended (2026)",
-    marker_color=CHART_TEAL,
-    text=follow_df_2026["Completed"],
-    textposition="outside",
-    hovertemplate="%{x} · Intervention: <b>%{y}</b> attended<extra></extra>",
-))
+# ── Chart 2: Missed visits — Control vs Intervention ──
+with col_miss:
+    # For Intervention: pending visits get 0 bar + "Pending" label; completed get missed count
+    _intv_missed = []
+    _intv_miss_text = []
+    for _, row in follow_df_2026.iterrows():
+        if row["Ongoing"]:
+            _intv_missed.append(0)
+            _intv_miss_text.append("⏳ Pending")
+        else:
+            _intv_missed.append(row["Missed"])
+            _intv_miss_text.append(str(row["Missed"]) if row["Missed"] > 0 else "0")
 
-# Intervention arm (2026) — Pending (ongoing)
-fig_combined.add_trace(go.Bar(
-    x=_visit_labels,
-    y=follow_df_2026["Pending"],
-    name="Intervention — Pending (2026)",
-    marker_color=CHART_AMBER,
-    text=[str(v) if v > 0 else "" for v in follow_df_2026["Pending"]],
-    textposition="outside",
-    hovertemplate="%{x} · Intervention: <b>%{y}</b> pending (ongoing)<extra></extra>",
-))
+    _ctrl_miss_text = [str(v) if v > 0 else "0" for v in follow_df_2025["Missed"]]
 
-# Intervention arm (2026) — Missed (completed timepoints)
-fig_combined.add_trace(go.Bar(
-    x=_visit_labels,
-    y=follow_df_2026["Missed"],
-    name="Intervention — Missed (2026)",
-    marker_color="#7ececa",
-    text=[str(v) if v > 0 else "" for v in follow_df_2026["Missed"]],
-    textposition="outside",
-    hovertemplate="%{x} · Intervention: <b>%{y}</b> missed<extra></extra>",
-))
-
-fig_combined.update_layout(barmode="group", uniformtext_minsize=9, uniformtext_mode="hide")
-st.plotly_chart(
-    style_chart(fig_combined, "Follow-up Attendance: Control (2025) vs Intervention (2026)", height=440),
-    use_container_width=True,
-)
+    fig_miss = go.Figure()
+    fig_miss.add_trace(go.Bar(
+        x=_visit_labels,
+        y=follow_df_2025["Missed"],
+        name="Control — Missed (2025)",
+        marker_color=CHART_RED,
+        text=_ctrl_miss_text,
+        textposition="outside",
+        hovertemplate="%{x} · Control: <b>%{y}</b> missed<extra></extra>",
+    ))
+    fig_miss.add_trace(go.Bar(
+        x=_visit_labels,
+        y=_intv_missed,
+        name="Intervention — Missed (2026)",
+        marker_color=CHART_ORANGE,
+        text=_intv_miss_text,
+        textposition="outside",
+        hovertemplate="%{x} · Intervention: <b>%{customdata}</b><extra></extra>",
+        customdata=_intv_miss_text,
+    ))
+    fig_miss.update_layout(barmode="group", uniformtext_minsize=9, uniformtext_mode="hide")
+    st.plotly_chart(
+        style_chart(fig_miss, "Missed Visits: Control vs Intervention", height=420),
+        use_container_width=True,
+    )
 
 insight_box(
-    "&#x1F535; <strong>Control Attended</strong> &nbsp;|&nbsp; "
-    "&#x1F4AB; <strong>Control Missed</strong> &nbsp;|&nbsp; "
-    "&#x1F7E2; <strong>Intervention Attended</strong> &nbsp;|&nbsp; "
-    "&#x1F7E1; <strong>Intervention Pending</strong> (visit still open) &nbsp;|&nbsp; "
-    "&#x1F4AB; <strong>Intervention Missed</strong> (completed timepoints only)",
+    "&#x1F535; <strong>Control (2025)</strong> — all visits complete &nbsp;|&nbsp; "
+    "&#x1F7E2; <strong>Intervention (2026)</strong> — ⏳ Pending means data collection is still ongoing for that visit",
     color=PURPLE,
 )
 
